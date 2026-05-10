@@ -10,12 +10,28 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-:root{
+:root, [data-theme="dark"]{
   --bg:#0a0d14;--bg-2:#0f1320;--panel:#141826;--panel-2:#1a1f30;
   --line:#252a3d;--line-2:#1c2030;
   --text:#e8ebf0;--text-2:#c4c9d4;--muted:#7a8294;--muted-2:#5a6275;
   --accent:#5b8fd9;--accent-soft:rgba(91,143,217,.15);
   --good:#6fcf97;--warn:#e6c656;--bad:#e57878;
+}
+[data-theme="light"]{
+  --bg:#f5f6f8;--bg-2:#ffffff;--panel:#ffffff;--panel-2:#f0f2f6;
+  --line:#dde1e8;--line-2:#e8eaf0;
+  --text:#1a1d24;--text-2:#3d424f;--muted:#6b7280;--muted-2:#9ca3af;
+  --accent:#3b6fb8;--accent-soft:rgba(59,111,184,.12);
+  --good:#1f8a4c;--warn:#b88a14;--bad:#c14848;
+}
+@media (prefers-color-scheme: light){
+  [data-theme="auto"]{
+    --bg:#f5f6f8;--bg-2:#ffffff;--panel:#ffffff;--panel-2:#f0f2f6;
+    --line:#dde1e8;--line-2:#e8eaf0;
+    --text:#1a1d24;--text-2:#3d424f;--muted:#6b7280;--muted-2:#9ca3af;
+    --accent:#3b6fb8;--accent-soft:rgba(59,111,184,.12);
+    --good:#1f8a4c;--warn:#b88a14;--bad:#c14848;
+  }
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;overflow-x:hidden;font-size:15px;line-height:1.5}
@@ -227,6 +243,15 @@ transform:scale(1.05)
 .field input,.field select,.field textarea{width:100%;padding:11px;background:var(–bg-2);border:1px solid var(–line);border-radius:8px;color:var(–text);font-family:inherit;font-size:14px;-webkit-appearance:none}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(–accent)}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.theme-picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.theme-btn{
+padding:12px 8px;background:var(–bg-2);border:1.5px solid var(–line);border-radius:10px;
+cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;
+font-family:inherit;font-size:12px;font-weight:500;color:var(–text-2)
+}
+.theme-btn.active{border-color:var(–accent);background:var(–accent-soft);color:var(–text)}
+.theme-btn .ico{font-size:20px;line-height:1}
 
 .picker{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:50vh;overflow-y:auto;margin-bottom:10px}
 .pick-item{padding:9px;background:var(–bg-2);border:1px solid var(–line);border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12px}
@@ -445,11 +470,20 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1
   <section id="view-standings" class="view">
     <div class="section-head">
       <h2>Classement</h2>
-      <button class="link" onclick="openLeagueModal()">Modifier</button>
+      <button class="link" onclick="openLeagueModal()">Équipes</button>
     </div>
     <div class="card">
       <table class="table" id="standingsTable"></table>
     </div>
+
+```
+<div class="section-head">
+  <h2>Résultats autres équipes</h2>
+  <button class="link" onclick="openLeagueMatchModal()">+ Ajouter</button>
+</div>
+<div class="card" id="leagueMatchesList"></div>
+```
+
   </section>
 
   <section id="view-trophies" class="view">
@@ -590,6 +624,14 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1
     <h3>Paramètres</h3>
     <div class="field"><label>Nom de l'équipe</label><input type="text" id="sTeamName" /></div>
     <div class="field"><label>Saison</label><input type="text" id="sSeason" /></div>
+    <div class="field">
+      <label>Thème</label>
+      <div class="theme-picker">
+        <div class="theme-btn" data-theme-value="light" onclick="setTheme('light')"><div class="ico">☀️</div>Clair</div>
+        <div class="theme-btn" data-theme-value="dark" onclick="setTheme('dark')"><div class="ico">🌙</div>Sombre</div>
+        <div class="theme-btn" data-theme-value="auto" onclick="setTheme('auto')"><div class="ico">⚙️</div>Auto</div>
+      </div>
+    </div>
     <div class="btn-row">
       <button class="btn btn-block" onclick="closeModal('settingsModal')">Annuler</button>
       <button class="btn btn-primary btn-block" onclick="saveSettings()">Enregistrer</button>
@@ -598,7 +640,8 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1
     <button class="btn btn-block" onclick="exportData()" style="margin-bottom:6px">📥 Exporter une sauvegarde</button>
     <button class="btn btn-block" onclick="document.getElementById('importInput').click()">📤 Importer une sauvegarde</button>
     <input type="file" id="importInput" accept="application/json" style="display:none" onchange="importData(event)" />
-    <button class="btn btn-danger btn-block" style="margin-top:14px" onclick="resetAllData()">⚠️ Tout réinitialiser</button>
+    <button class="btn btn-danger btn-block" style="margin-top:14px" onclick="resetAllData()">⚠️ Tout vider (zéro)</button>
+    <button class="btn btn-block" style="margin-top:6px;font-size:11px;color:var(--muted);border-style:dashed" onclick="loadDemo()">Charger les données de démo</button>
   </div>
 </div>
 
@@ -612,6 +655,29 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1
       <button class="btn btn-block" onclick="closeModal('leagueModal')">Fermer</button>
       <button class="btn btn-primary btn-block" onclick="saveLeague()">Enregistrer</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-back" id="leagueMatchModal">
+  <div class="modal">
+    <h3 id="lmTitle">Résultat de match</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Saisis un match entre deux autres équipes de ta ligue pour compléter le classement.</p>
+    <div class="field"><label>Équipe à domicile</label><select id="lmHome"></select></div>
+    <div class="field"><label>Équipe à l'extérieur</label><select id="lmAway"></select></div>
+    <div class="field"><label>Score</label>
+      <div class="score-edit">
+        <input type="number" id="lmScoreHome" min="0" value="0"/>
+        <span style="color:var(--muted);font-size:24px">-</span>
+        <input type="number" id="lmScoreAway" min="0" value="0"/>
+      </div>
+    </div>
+    <div class="field"><label>Date (facultatif)</label><input type="date" id="lmDate" /></div>
+    <input type="hidden" id="lmId" />
+    <div class="btn-row">
+      <button class="btn btn-block" onclick="closeModal('leagueMatchModal')">Annuler</button>
+      <button class="btn btn-primary btn-block" onclick="saveLeagueMatch()">Enregistrer</button>
+    </div>
+    <button class="btn btn-danger btn-block" id="deleteLeagueMatchBtn" style="margin-top:8px;display:none" onclick="deleteLeagueMatch()">Supprimer ce match</button>
   </div>
 </div>
 
@@ -712,7 +778,10 @@ let myProfile=null;    // profil perso joueur (côté téléphone joueur)
 let shareData=null;    // données reçues du lien partagé
 
 function defaultState(){
-  return {teamName:'FC Étoile',season:'2025/2026',players:demoPlayers(),matches:demoMatches(),league:demoLeague()};
+  return {teamName:'FC Étoile',season:'2025/2026',players:demoPlayers(),matches:demoMatches(),league:demoLeague(),leagueMatches:[]};
+}
+function emptyState(){
+  return {teamName:'Mon équipe',season:'2025/2026',players:[],matches:[],league:[{name:'Mon équipe',isUs:true}],leagueMatches:[]};
 }
 function demoPlayers(){
   return [
@@ -758,6 +827,7 @@ function demoLeague(){
 function load(){
   try{const r=localStorage.getItem(STORE_KEY);state=r?JSON.parse(r):defaultState();}catch(e){state=defaultState();}
   state.matches=state.matches.map(m=>({...m,starters:m.starters||[],subs:m.subs||[],lineup:m.lineup||{},events:m.events||[],formation:m.formation||'4-3-3'}));
+  if(!state.leagueMatches) state.leagueMatches=[];
 }
 function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(state));}catch(e){}}
 
@@ -810,6 +880,7 @@ function computeStandings(){
   const teams=state.league.map(t=>({name:t.name,isUs:!!t.isUs,P:0,W:0,D:0,L:0,GF:0,GA:0,GD:0,Pts:0}));
   const find=n=>teams.find(t=>t.name===n);
   const us=teams.find(t=>t.isUs);
+  // 1. Nos matchs
   for(const m of state.matches){
     if(!m.played) continue;
     const opp=find(m.opponent);if(!us||!opp) continue;
@@ -817,6 +888,14 @@ function computeStandings(){
     if(m.scoreUs>m.scoreThem){us.W++;us.Pts+=3;opp.L++;}
     else if(m.scoreUs<m.scoreThem){us.L++;opp.W++;opp.Pts+=3;}
     else{us.D++;us.Pts++;opp.D++;opp.Pts++;}
+  }
+  // 2. Matchs entre autres équipes de la ligue
+  for(const m of (state.leagueMatches||[])){
+    const h=find(m.home),a=find(m.away);if(!h||!a) continue;
+    h.P++;a.P++;h.GF+=m.scoreHome;h.GA+=m.scoreAway;a.GF+=m.scoreAway;a.GA+=m.scoreHome;
+    if(m.scoreHome>m.scoreAway){h.W++;h.Pts+=3;a.L++;}
+    else if(m.scoreHome<m.scoreAway){h.L++;a.W++;a.Pts+=3;}
+    else{h.D++;h.Pts++;a.D++;a.Pts++;}
   }
   teams.forEach(t=>t.GD=t.GF-t.GA);
   teams.sort((a,b)=>b.Pts-a.Pts||b.GD-a.GD||b.GF-a.GF||a.name.localeCompare(b.name));
@@ -833,7 +912,7 @@ function renderAll(){
   document.getElementById('heroTeam').textContent=state.teamName;
   document.getElementById('seasonLabel').textContent=state.season;
   document.getElementById('heroSeason').textContent=state.season;
-  renderDashboard();renderPlayers();renderMatches();renderStandings();renderTrophies();
+  renderDashboard();renderPlayers();renderMatches();renderStandings();renderTrophies();renderLeagueMatches();
 }
 
 function renderDashboard(){
@@ -1218,7 +1297,24 @@ function deleteMatch(){
 function openSettings(){
   document.getElementById('sTeamName').value=state.teamName;
   document.getElementById('sSeason').value=state.season;
+  // Marquer le bouton actif
+  const current=localStorage.getItem('tm_theme')||'dark';
+  document.querySelectorAll('.theme-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.themeValue===current);
+  });
   openModal('settingsModal');
+}
+function setTheme(t){
+  localStorage.setItem('tm_theme',t);
+  applyTheme();
+  document.querySelectorAll('.theme-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.themeValue===t);
+  });
+  toast('Thème '+(t==='light'?'clair':t==='dark'?'sombre':'automatique'));
+}
+function applyTheme(){
+  const t=localStorage.getItem('tm_theme')||'dark';
+  document.documentElement.setAttribute('data-theme',t);
 }
 function saveSettings(){
   state.teamName=document.getElementById('sTeamName').value.trim()||'Mon équipe';
@@ -1227,8 +1323,12 @@ function saveSettings(){
   save();closeModal('settingsModal');renderAll();toast('Enregistré');
 }
 function resetAllData(){
-  if(!confirm('Effacer toutes les données ?'))return;
-  state=defaultState();save();closeModal('settingsModal');renderAll();toast('Réinitialisé');
+  if(!confirm('Effacer TOUTES les données ?\n\nTu repars de zéro : aucun joueur, aucun match, aucune équipe (sauf la tienne).'))return;
+  state=emptyState();save();closeModal('settingsModal');renderAll();toast('Tout vidé. À toi de remplir !');
+}
+function loadDemo(){
+  if(!confirm('Charger les données de démo ?\n\nTes données actuelles seront remplacées.'))return;
+  state=defaultState();save();closeModal('settingsModal');renderAll();toast('Démo chargée');
 }
 function exportData(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
@@ -1256,6 +1356,75 @@ function saveLeague(){
   document.querySelectorAll('.leagueInput').forEach(inp=>{const i=parseInt(inp.dataset.i);if(state.league[i]) state.league[i].name=inp.value.trim()||'Équipe';});
   const us=state.league.find(t=>t.isUs);if(us) state.teamName=us.name;
   save();closeModal('leagueModal');renderAll();toast('Enregistré');
+}
+
+// === Matchs entre autres équipes ===
+function openLeagueMatchModal(id){
+  const otherTeams=state.league.filter(t=>!t.isUs);
+  if(otherTeams.length<2){toast('Il faut au moins 2 équipes adverses');return;}
+  const hSel=document.getElementById('lmHome'),aSel=document.getElementById('lmAway');
+  hSel.innerHTML=otherTeams.map(t=>`<option value="${escapeAttr(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  aSel.innerHTML=otherTeams.map(t=>`<option value="${escapeAttr(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  document.getElementById('lmId').value=id||'';
+  if(id){
+    const m=state.leagueMatches.find(x=>x.id===id);
+    document.getElementById('lmTitle').textContent='Modifier le match';
+    hSel.value=m.home;aSel.value=m.away;
+    document.getElementById('lmScoreHome').value=m.scoreHome;
+    document.getElementById('lmScoreAway').value=m.scoreAway;
+    document.getElementById('lmDate').value=m.date||'';
+    document.getElementById('deleteLeagueMatchBtn').style.display='block';
+  }else{
+    document.getElementById('lmTitle').textContent='Nouveau résultat';
+    aSel.value=otherTeams[1]?.name||'';
+    document.getElementById('lmScoreHome').value=0;
+    document.getElementById('lmScoreAway').value=0;
+    document.getElementById('lmDate').value=new Date().toISOString().slice(0,10);
+    document.getElementById('deleteLeagueMatchBtn').style.display='none';
+  }
+  openModal('leagueMatchModal');
+}
+function saveLeagueMatch(){
+  const home=document.getElementById('lmHome').value;
+  const away=document.getElementById('lmAway').value;
+  if(home===away){toast('Choisis deux équipes différentes');return;}
+  const data={
+    home,away,
+    scoreHome:parseInt(document.getElementById('lmScoreHome').value)||0,
+    scoreAway:parseInt(document.getElementById('lmScoreAway').value)||0,
+    date:document.getElementById('lmDate').value
+  };
+  const id=document.getElementById('lmId').value;
+  if(id){
+    Object.assign(state.leagueMatches.find(x=>x.id===id),data);
+  }else{
+    state.leagueMatches.push({id:uid('lm'),...data});
+  }
+  save();closeModal('leagueMatchModal');renderAll();toast('Match enregistré');
+}
+function deleteLeagueMatch(){
+  const id=document.getElementById('lmId').value;
+  if(!id||!confirm('Supprimer ce match ?'))return;
+  state.leagueMatches=state.leagueMatches.filter(m=>m.id!==id);
+  save();closeModal('leagueMatchModal');renderAll();toast('Supprimé');
+}
+function renderLeagueMatches(){
+  const el=document.getElementById('leagueMatchesList');if(!el) return;
+  const list=[...(state.leagueMatches||[])].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(!list.length){el.innerHTML=emptyBlock('📋','Aucun match saisi','Ajoute les résultats entre autres équipes pour compléter le classement');return;}
+  el.innerHTML=list.map(m=>{
+    let cls='draw';
+    if(m.scoreHome>m.scoreAway) cls='win';
+    else if(m.scoreHome<m.scoreAway) cls='loss';
+    return `<div class="match-row" onclick="openLeagueMatchModal('${m.id}')">
+      <div class="match-meta"><span>${m.date?fmtDate(m.date):'—'}</span></div>
+      <div class="match-teams">
+        <div class="match-team home">${escapeHtml(m.home)}</div>
+        <div class="match-score ${cls}">${m.scoreHome} - ${m.scoreAway}</div>
+        <div class="match-team">${escapeHtml(m.away)}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ============================================================
@@ -1666,6 +1835,7 @@ function showView(name){
 }
 
 // INIT
+applyTheme();
 load();loadMyProfile();
 if(!checkShareMode()){renderAll();runPendingNotifs();}
 </script>
